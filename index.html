@@ -1,401 +1,1047 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Daylight Scheduler - Year Overview</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>tzwars — Daylight vs. the Clock</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌗</text></svg>">
   <style>
+    * { box-sizing: border-box; }
+
     body {
-      font-family: sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       margin: 0;
-      padding: 0;
-      background: #f5f5f5;
+      background: #0e1118;
+      color: #e8ebf2;
+      line-height: 1.45;
     }
 
     header {
-      padding: 20px;
-      background: #333;
-      color: #fff;
-      text-align: center;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 20px 8px;
     }
 
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.5px;
+    }
+
+    header h1 .accent { color: #ffd479; }
+
+    header p {
+      margin: 6px 0 0;
+      color: #9aa3b5;
+      max-width: 70ch;
+    }
+
+    .panel {
+      max-width: 1100px;
+      margin: 16px auto;
+      padding: 14px 16px;
+      background: #161b28;
+      border: 1px solid #242c40;
+      border-radius: 10px;
+    }
+
+    /* ---------- controls ---------- */
     .controls {
-      padding: 10px;
-      background: #f0f0f0;
       display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
       flex-wrap: wrap;
+      gap: 10px 28px;
+      align-items: center;
     }
 
-    .grid-container {
-      /* This container centers the entire grid and gives it a border */
-      width: calc(100px + (24 * 40px));
-      /* 24 hours * 40px/hour = 960px + 100px label column = 1060px total */
-      margin: 20px auto;
-      border: 1px solid #ccc;
-      background: #2c3e50;
-      overflow: hidden;
-      position: relative;
+    .control-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
     }
 
-    /* Hours header row */
-    .hours-header {
-      position: relative;
-      height: 40px;
-      border-bottom: 1px solid #ccc;
-      background: #ddd;
-      overflow: hidden; /* no horizontal scroll, fixed width now */
+    .group-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #6f7a92;
+    }
+
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #c3cadb;
       white-space: nowrap;
     }
 
-    .hours-header-content {
-      position: absolute;
-      left: 100px; /* after month labels */
-      top: 0;
-      height: 100%;
+    .controls input[type="number"], .controls select {
+      background: #0e1320;
+      color: #e8ebf2;
+      border: 1px solid #2c3550;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 13px;
     }
 
-    .hour-label {
-      display: inline-block;
-      width: 40px; /* width per hour */
-      text-align: center;
-      line-height: 40px;
-      font-size: 12px;
-      color: #333;
-      border-right: 1px solid #ccc;
-      box-sizing: border-box;
+    .controls input[type="number"] { width: 84px; }
+
+    .controls input:focus-visible, .controls select:focus-visible, .controls button:focus-visible {
+      outline: 2px solid #ffd479;
+      outline-offset: 1px;
     }
 
-    /* Container with months */
-    .months-container {
+    .controls button {
+      background: #232d47;
+      color: #e8ebf2;
+      border: 1px solid #34405f;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .controls button:hover { background: #2c3855; }
+
+    #workOut {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: #6fe3a1;
+    }
+
+    /* ---------- chart ---------- */
+    .chart-panel { padding: 16px; }
+
+    #chartWrap {
       position: relative;
-      overflow: hidden;
-      white-space: nowrap; /* Keep hours in one line */
+      width: 100%;
+      touch-action: none;
     }
 
-    /* Each month row */
-    .month-row {
-      position: relative;
-      height: 60px;
-      border-bottom: 1px solid #444;
-    }
+    #chart { display: block; width: 100%; }
 
-    .month-label {
+    #workBlock {
       position: absolute;
-      left: 0;
-      top: 0;
-      width: 100px;
-      height: 100%;
-      background: #eee;
-      color: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      border-right: 1px solid #ccc;
-      z-index: 2;
-    }
-
-    .month-hours {
-      position: absolute;
-      left: 100px;
-      top: 0;
-      height: 100%;
-      white-space: nowrap;
-    }
-
-    .month-hour {
-      display: inline-block;
-      width: 40px; /* same as hour-label width */
-      height: 100%;
-      position: relative;
-      box-sizing: border-box;
-    }
-
-    /* Night/day overlay per month row */
-    .night-overlay {
-      pointer-events: none;
-      position: absolute;
-      top: 0;
-      left: 100px;
-      height: 100%;
-      z-index: 1;
-    }
-
-    /* Single Work block - spans all months */
-    .work-block {
-      position: absolute;
-      top: 40px; /* below the hours header */
-      left: 100px; /* initial offset after month labels */
-      height: calc(60px * 12); /* cover all 12 rows */
-      background: rgba(39, 174, 96, 0.7);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      border-radius: 4px;
+      background: rgba(60, 210, 130, 0.16);
+      border: 1.5px solid rgba(90, 230, 150, 0.85);
+      border-radius: 6px;
       cursor: grab;
       z-index: 3;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 5px;
     }
 
-    .work-block:active {
-      cursor: grabbing;
+    #workBlock:active { cursor: grabbing; }
+
+    #workBlock:focus-visible {
+      outline: 2px solid #ffd479;
+      outline-offset: 2px;
     }
 
-    .info {
-      text-align: center;
-      margin: 10px;
-      font-size: 14px;
+    #workLabel {
+      font-size: 11px;
+      font-weight: 700;
+      color: #eafff2;
+      background: rgba(20, 60, 38, 0.85);
+      border: 1px solid rgba(90, 230, 150, 0.5);
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
     }
 
-    .read-only-field {
-      width: 150px;
-      padding: 5px;
-      border: 1px solid #ccc;
-      background: #eee;
-      text-align: center;
+    .handle {
+      position: absolute;
+      top: 0;
+      width: 12px;
+      height: 100%;
+      cursor: ew-resize;
+      z-index: 4;
     }
+
+    .handle.left { left: -6px; }
+    .handle.right { right: -6px; }
+
+    .handle::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: transparent;
+    }
+
+    .handle:hover::after { background: rgba(140, 255, 190, 0.8); }
+
+    #tooltip {
+      position: absolute;
+      z-index: 5;
+      pointer-events: none;
+      background: rgba(10, 14, 24, 0.94);
+      border: 1px solid #34405f;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: nowrap;
+      display: none;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #tooltip .tt-date { font-weight: 700; color: #ffd479; }
+    #tooltip .tt-dst { color: #8fa3d9; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #9aa3b5;
+    }
+
+    .legend .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.15);
+      display: inline-block;
+    }
+
+    .legend .hint { margin-left: auto; color: #6f7a92; }
+
+    /* ---------- stats ---------- */
+    .stats {
+      max-width: 1100px;
+      margin: 16px auto;
+      padding: 0 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: #161b28;
+      border: 1px solid #242c40;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .card .num {
+      font-size: 26px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #ffd479;
+    }
+
+    .card .lbl {
+      font-size: 13px;
+      color: #c3cadb;
+      margin-top: 2px;
+    }
+
+    .card .sub {
+      font-size: 12px;
+      color: #6f7a92;
+      margin-top: 4px;
+    }
+
+    /* ---------- scoreboard ---------- */
+    .scoreboard h2 {
+      margin: 2px 0 4px;
+      font-size: 18px;
+    }
+
+    .scoreboard > p {
+      margin: 0 0 10px;
+      color: #9aa3b5;
+      font-size: 13px;
+    }
+
+    .scoreboard-scroll { overflow-x: auto; }
+
+    .scoreboard table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .scoreboard th, .scoreboard td {
+      padding: 8px 12px;
+      text-align: right;
+      border-bottom: 1px solid #242c40;
+      white-space: nowrap;
+    }
+
+    .scoreboard th:first-child, .scoreboard td:first-child { text-align: left; }
+
+    .scoreboard th {
+      color: #6f7a92;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .scoreboard tbody tr { cursor: pointer; }
+    .scoreboard tbody tr:hover { background: #1c2334; }
+
+    .scoreboard tbody tr.active {
+      background: #20293e;
+      box-shadow: inset 3px 0 0 #ffd479;
+    }
+
+    .scoreboard td.best { color: #6fe3a1; font-weight: 700; }
+
+    footer {
+      max-width: 1100px;
+      margin: 20px auto 40px;
+      padding: 0 20px;
+      color: #6f7a92;
+      font-size: 12px;
+    }
+
+    footer p { margin: 4px 0; }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>Daylight Scheduler - Year Overview</h1>
-    <p>Drag the "Work" block to choose working hours for the entire year.</p>
+    <h1><span class="accent">tz</span>wars</h1>
+    <p>Daylight vs. the clock. Every row of the map is one day of the year, left to right is your local clock.
+       Drag the green block to your working hours, then compare how each side of the timezone wars —
+       permanent standard time, permanent DST, or seasonal switching — treats your year.</p>
   </header>
 
-  <div class="controls">
-    <input type="text" id="latitude" placeholder="Latitude" value="40.7128" style="width:100px;">
-    <input type="text" id="longitude" placeholder="Longitude" value="-74.0060" style="width:100px;">
-    <button id="fetchBtn">Fetch Sunrise/Sunset</button>
-    <label>Work Duration (hours):</label>
-    <input type="number" id="workDuration" min="1" max="24" value="8" style="width:50px;">
-    <label>Work Hours:</label>
-    <input type="text" id="workHoursDisplay" class="read-only-field" readonly>
-  </div>
+  <section class="panel controls">
+    <div class="control-group">
+      <span class="group-title">Location</span>
+      <select id="preset" aria-label="City preset"></select>
+      <label>Lat <input id="lat" type="number" step="0.01" min="-89" max="89"></label>
+      <label>Lng <input id="lng" type="number" step="0.01" min="-180" max="180"></label>
+      <button id="locateBtn" type="button" title="Use browser geolocation">📍 My location</button>
+    </div>
+    <div class="control-group">
+      <span class="group-title">Clock</span>
+      <label>UTC offset <input id="tz" type="number" step="0.25" min="-12" max="14"></label>
+      <label>DST policy
+        <select id="dst">
+          <option value="none">Permanent standard time</option>
+          <option value="perm">Permanent DST</option>
+          <option value="us">US rules (Mar–Nov)</option>
+          <option value="eu">EU rules (Mar–Oct)</option>
+          <option value="au">AU rules (Oct–Apr)</option>
+        </select>
+      </label>
+    </div>
+    <div class="control-group">
+      <span class="group-title">Work</span>
+      <label>Hours <output id="workOut">09:00–17:00</output></label>
+      <label>Duration <input id="dur" type="number" step="0.5" min="1" max="16"> h</label>
+      <label><input id="weekdays" type="checkbox" checked> weekdays only</label>
+    </div>
+  </section>
 
-  <div class="grid-container">
-    <!-- Hours header row -->
-    <div class="hours-header" id="hoursHeader">
-      <div class="hours-header-content" id="hoursHeaderContent">
-        <!-- Hours generated by JS -->
+  <section class="panel chart-panel">
+    <div id="chartWrap">
+      <canvas id="chart"></canvas>
+      <div id="workBlock" tabindex="0" role="slider" aria-label="Work hours — drag or use arrow keys to move, Shift+arrows for one hour steps">
+        <div class="handle left" title="Drag to change start time"></div>
+        <span id="workLabel"></span>
+        <div class="handle right" title="Drag to change end time"></div>
       </div>
+      <div id="tooltip"></div>
     </div>
-
-    <!-- Container with months -->
-    <div class="months-container" id="monthsContainer">
-      <!-- Month rows generated by JS -->
+    <div class="legend" id="legend">
+      <span class="hint">drag to move · drag edges to resize · arrow keys nudge 15 min (Shift = 1 h)</span>
     </div>
+  </section>
 
-    <!-- Single work block -->
-    <div class="work-block" id="workBlock">
-      Work
+  <section class="stats">
+    <div class="card">
+      <div class="num" id="stPct">–</div>
+      <div class="lbl">of work time is in daylight</div>
+      <div class="sub" id="stPctSub"></div>
     </div>
-  </div>
+    <div class="card">
+      <div class="num" id="stDarkStart">–</div>
+      <div class="lbl">dark starts</div>
+      <div class="sub">work days that begin before sunrise (or after sunset)</div>
+    </div>
+    <div class="card">
+      <div class="num" id="stDarkEnd">–</div>
+      <div class="lbl">dark ends</div>
+      <div class="sub">work days that finish after sunset (or before sunrise)</div>
+    </div>
+    <div class="card">
+      <div class="num" id="stRange">–</div>
+      <div class="lbl">shortest → longest day</div>
+      <div class="sub" id="stRangeSub"></div>
+    </div>
+  </section>
 
-  <div class="info">
-    <p>Hours run horizontally (0 to 23). Each hour = 40px. Drag the "Work" block to shift the schedule.</p>
-  </div>
+  <section class="panel scoreboard">
+    <h2>⚔️ The scoreboard</h2>
+    <p>Same place, same job — five clock policies. Best value in each column is highlighted; click a row to try that policy.</p>
+    <div class="scoreboard-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Policy</th>
+            <th>Dark starts</th>
+            <th>Dark ends</th>
+            <th>Work in daylight</th>
+          </tr>
+        </thead>
+        <tbody id="scoreBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>Sun positions are computed locally with the NOAA solar equations — no API calls, works offline.
+       The map shades by real solar altitude: day, then civil, nautical and astronomical twilight, then night.
+       Seasonal DST policies show up as the visible one-hour jumps in the daylight bands.</p>
+    <p>Settings are stored in the URL — copy the address to share your battle.</p>
+  </footer>
 
   <script>
-    const HOURS = 24;
-    const HOUR_WIDTH = 40;
-    const MONTHS = [
-      'January','February','March','April','May','June',
-      'July','August','September','October','November','December'
+    'use strict';
+
+    /* ---------------- constants & helpers ---------------- */
+
+    const rad = d => d * Math.PI / 180;
+    const deg = r => r * 180 / Math.PI;
+    const mod = (a, n) => ((a % n) + n) % n;
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+    const YEAR = new Date().getFullYear();
+    const DAYS_IN_YEAR = (new Date(YEAR, 1, 29).getMonth() === 1) ? 366 : 365;
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    const DST_POLICIES = {
+      none: 'Permanent standard time',
+      perm: 'Permanent DST',
+      us:   'US rules (Mar–Nov)',
+      eu:   'EU rules (Mar–Oct)',
+      au:   'AU rules (Oct–Apr)'
+    };
+
+    const PRESETS = [
+      { name: 'New York',   lat: 40.71,  lng: -74.01,  tz: -5, dst: 'us'   },
+      { name: 'Seattle',    lat: 47.61,  lng: -122.33, tz: -8, dst: 'us'   },
+      { name: 'Anchorage',  lat: 61.22,  lng: -149.90, tz: -9, dst: 'us'   },
+      { name: 'London',     lat: 51.51,  lng: -0.13,   tz: 0,  dst: 'eu'   },
+      { name: 'Madrid',     lat: 40.42,  lng: -3.70,   tz: 1,  dst: 'eu'   },
+      { name: 'Helsinki',   lat: 60.17,  lng: 24.94,   tz: 2,  dst: 'eu'   },
+      { name: 'Reykjavík',  lat: 64.15,  lng: -21.94,  tz: 0,  dst: 'none' },
+      { name: 'Nairobi',    lat: -1.29,  lng: 36.82,   tz: 3,  dst: 'none' },
+      { name: 'Singapore',  lat: 1.35,   lng: 103.82,  tz: 8,  dst: 'none' },
+      { name: 'Tokyo',      lat: 35.68,  lng: 139.65,  tz: 9,  dst: 'none' },
+      { name: 'Sydney',     lat: -33.87, lng: 151.21,  tz: 10, dst: 'au'   },
+      { name: 'São Paulo',  lat: -23.55, lng: -46.63,  tz: -3, dst: 'none' }
     ];
 
-    const hoursHeader = document.getElementById('hoursHeaderContent');
-    const monthsContainer = document.getElementById('monthsContainer');
-    const workBlock = document.getElementById('workBlock');
-    const fetchBtn = document.getElementById('fetchBtn');
-    const latInput = document.getElementById('latitude');
-    const lngInput = document.getElementById('longitude');
-    const workDurationInput = document.getElementById('workDuration');
-    const workHoursDisplay = document.getElementById('workHoursDisplay');
-
-    let workStartHour = 0; // initial start hour
-    let workDuration = parseInt(workDurationInput.value, 10) || 8;
-
-    // Generate hours in header
-    for (let h = 0; h < HOURS; h++) {
-      const hourDiv = document.createElement('div');
-      hourDiv.className = 'hour-label';
-      hourDiv.textContent = h;
-      hoursHeader.appendChild(hourDiv);
+    function fmtMin(m) {
+      m = mod(Math.round(m), 1440);
+      return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
     }
-    hoursHeader.style.width = (HOURS * HOUR_WIDTH) + 'px';
 
-    // Generate months rows
-    MONTHS.forEach((m, i) => {
-      const monthRow = document.createElement('div');
-      monthRow.className = 'month-row';
-      monthRow.setAttribute('data-month', i);
-      monthsContainer.appendChild(monthRow);
+    function fmtDur(m) {
+      return Math.floor(m / 60) + 'h' + String(Math.round(m % 60)).padStart(2, '0') + 'm';
+    }
 
-      const labelDiv = document.createElement('div');
-      labelDiv.className = 'month-label';
-      labelDiv.textContent = m;
-      monthRow.appendChild(labelDiv);
+    /* ---------------- state ---------------- */
 
-      const monthHours = document.createElement('div');
-      monthHours.className = 'month-hours';
-      monthHours.style.width = (HOURS * HOUR_WIDTH) + 'px';
-      for (let h = 0; h < HOURS; h++) {
-        const mhDiv = document.createElement('div');
-        mhDiv.className = 'month-hour';
-        monthHours.appendChild(mhDiv);
+    const state = {
+      lat: 40.71, lng: -74.01, tz: -5, dst: 'us',
+      workStart: 540,      // minutes after midnight, local clock
+      workDur: 480,        // minutes
+      weekdaysOnly: true
+    };
+
+    /* ---------------- DST rules ---------------- */
+
+    function doy(date) {
+      return Math.round((date - new Date(YEAR, 0, 1)) / 86400000);
+    }
+
+    function nthSundayDoy(month, n) {
+      let count = 0;
+      for (let day = 1; day <= 31; day++) {
+        const d = new Date(YEAR, month, day);
+        if (d.getMonth() !== month) break;
+        if (d.getDay() === 0 && ++count === n) return doy(d);
       }
-      monthRow.appendChild(monthHours);
-
-      // Night overlay
-      const nightOverlay = document.createElement('div');
-      nightOverlay.className = 'night-overlay';
-      nightOverlay.style.width = (HOURS * HOUR_WIDTH) + 'px';
-      monthRow.appendChild(nightOverlay);
-    });
-
-    // Set initial work block width based on duration
-    function updateWorkBlockWidth() {
-      workBlock.style.width = (workDuration * HOUR_WIDTH) + 'px';
-    }
-    updateWorkBlockWidth();
-
-    // Update displayed start/end times
-    function updateWorkHoursDisplay() {
-      // Start hour = workStartHour
-      const endHour = (workStartHour + workDuration) % 24;
-      workHoursDisplay.value = `${formatHour(workStartHour)}:00 - ${formatHour(endHour)}:00`;
+      return -1;
     }
 
-    function formatHour(h) {
-      return h.toString().padStart(2, '0');
-    }
-
-    updateWorkHoursDisplay();
-
-    // Make work block draggable horizontally
-    let isDragging = false;
-    let dragStartX = 0;
-    let initialLeft = 0;
-
-    workBlock.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      isDragging = true;
-      dragStartX = e.clientX;
-      initialLeft = parseInt(workBlock.style.left, 10) || 100;
-      document.body.style.userSelect = 'none';
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      const diff = e.clientX - dragStartX;
-      let newLeft = initialLeft + diff;
-      // Constrain within total width (24 hours)
-      const maxLeft = 100 + (HOURS * HOUR_WIDTH) - parseInt(workBlock.style.width,10);
-      if (newLeft < 100) newLeft = 100;
-      if (newLeft > maxLeft) newLeft = maxLeft;
-      workBlock.style.left = newLeft + 'px';
-
-      // Calculate start hour based on position
-      const startPx = newLeft - 100;
-      workStartHour = Math.round(startPx / HOUR_WIDTH);
-      updateWorkHoursDisplay();
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (isDragging) {
-        isDragging = false;
-        document.body.style.userSelect = 'auto';
+    function lastSundayDoy(month) {
+      for (let day = 31; day >= 1; day--) {
+        const d = new Date(YEAR, month, day);
+        if (d.getMonth() === month && d.getDay() === 0) return doy(d);
       }
-    });
+      return -1;
+    }
 
-    workDurationInput.addEventListener('change', () => {
-      workDuration = parseInt(workDurationInput.value, 10) || 8;
-      if (workDuration < 1) workDuration = 1;
-      if (workDuration > 24) workDuration = 24;
-      workDurationInput.value = workDuration;
-      updateWorkBlockWidth();
+    const DST_RANGES = {
+      us: { start: nthSundayDoy(2, 2), end: nthSundayDoy(10, 1) },
+      eu: { start: lastSundayDoy(2),   end: lastSundayDoy(9)    },
+      au: { start: nthSundayDoy(9, 1), end: nthSundayDoy(3, 1)  }   // southern: wraps year end
+    };
 
-      // Adjust if block exceeds boundary after width change
-      const currentLeft = parseInt(workBlock.style.left, 10) || 100;
-      const maxLeft = 100 + (HOURS * HOUR_WIDTH) - parseInt(workBlock.style.width,10);
-      let newLeft = currentLeft;
-      if (newLeft > maxLeft) newLeft = maxLeft;
-      workBlock.style.left = newLeft + 'px';
+    function dstActive(rule, d) {
+      if (rule === 'none') return false;
+      if (rule === 'perm') return true;
+      const r = DST_RANGES[rule];
+      if (rule === 'au') return d >= r.start || d < r.end;
+      return d >= r.start && d < r.end;
+    }
 
-      // Recalculate start hour
-      const startPx = newLeft - 100;
-      workStartHour = Math.round(startPx / HOUR_WIDTH);
-      updateWorkHoursDisplay();
-    });
+    /* ---------------- solar model (NOAA equations) ---------------- */
 
-    fetchBtn.addEventListener('click', () => {
-      fetchAllMonths(latInput.value, lngInput.value);
-    });
+    // Per-day solar constants + sunrise/sunset in true UTC minutes.
+    function buildDays() {
+      const latR = rad(clamp(state.lat, -89, 89));
+      const days = [];
+      for (let d = 0; d < DAYS_IN_YEAR; d++) {
+        const g = 2 * Math.PI / DAYS_IN_YEAR * d;   // fractional year at local noon
+        const eqtime = 229.18 * (0.000075
+          + 0.001868 * Math.cos(g)     - 0.032077 * Math.sin(g)
+          - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+        const decl = 0.006918
+          - 0.399912 * Math.cos(g)     + 0.070257 * Math.sin(g)
+          - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g)
+          - 0.002697 * Math.cos(3 * g) + 0.001480 * Math.sin(3 * g);
 
-    // Fetch sunrise/sunset for each month (e.g., on the 15th)
-    async function fetchAllMonths(lat, lng) {
-      const promises = MONTHS.map((m, i) => {
-        const date = `${(new Date().getFullYear())}-${String(i+1).padStart(2,'0')}-15`;
-        return fetchSunData(lat, lng, date).then(data => ({monthIndex: i, data}));
-      });
+        const sinsin = Math.sin(latR) * Math.sin(decl);
+        const coscos = Math.cos(latR) * Math.cos(decl);
+        const cosHA = (Math.cos(rad(90.833)) - sinsin) / coscos;
 
-      const results = await Promise.all(promises);
-
-      results.forEach(r => {
-        const monthRow = monthsContainer.querySelector(`.month-row[data-month="${r.monthIndex}"]`);
-        if (r.data && monthRow) {
-          updateDaylightOverlay(monthRow, r.data.sunriseHourLocal, r.data.sunsetHourLocal);
+        let srUTC = null, ssUTC = null, dayLen, polar = 0;
+        if (cosHA > 1)       { dayLen = 0;    polar = -1; }        // polar night
+        else if (cosHA < -1) { dayLen = 1440; polar = 1;  }        // midnight sun
+        else {
+          const ha = deg(Math.acos(cosHA));
+          srUTC = 720 - 4 * (state.lng + ha) - eqtime;
+          ssUTC = 720 - 4 * (state.lng - ha) - eqtime;
+          dayLen = 8 * ha;
         }
+
+        const date = new Date(YEAR, 0, d + 1);
+        days.push({
+          eqtime, sinsin, coscos,
+          srUTC, ssUTC, dayLen, polar,
+          dow: date.getDay(),
+          month: date.getMonth(),
+          label: MONTHS[date.getMonth()] + ' ' + date.getDate()
+        });
+      }
+      return days;
+    }
+
+    let DAYS = [];
+
+    /* ---------------- daylight field colors ---------------- */
+
+    // Color stops by solar altitude in degrees.
+    const ALT_STOPS = [
+      [-90,   6,   9,  19],
+      [-18,  10,  16,  46],   // night → astronomical twilight
+      [-12,  27,  42,  84],   // → nautical
+      [ -6,  60,  84, 134],   // → civil
+      [ -2, 132, 101, 106],
+      [  0, 236, 158,  86],   // horizon glow
+      [  1, 255, 201, 107],
+      [ 12, 255, 226, 158],
+      [ 90, 255, 238, 186]
+    ];
+
+    // Lookup table: altitude -90..90 in 0.25° steps → rgb
+    const ALT_LUT = (() => {
+      const lut = new Uint8ClampedArray(721 * 3);
+      for (let i = 0; i <= 720; i++) {
+        const a = i / 4 - 90;
+        let s = 0;
+        while (s < ALT_STOPS.length - 2 && a > ALT_STOPS[s + 1][0]) s++;
+        const [a0, r0, g0, b0] = ALT_STOPS[s];
+        const [a1, r1, g1, b1] = ALT_STOPS[s + 1];
+        const t = clamp((a - a0) / (a1 - a0), 0, 1);
+        lut[i * 3]     = r0 + (r1 - r0) * t;
+        lut[i * 3 + 1] = g0 + (g1 - g0) * t;
+        lut[i * 3 + 2] = b0 + (b1 - b0) * t;
+      }
+      return lut;
+    })();
+
+    /* ---------------- chart rendering ---------------- */
+
+    const wrap = document.getElementById('chartWrap');
+    const canvas = document.getElementById('chart');
+    const ctx = canvas.getContext('2d');
+    const off = document.createElement('canvas');
+
+    const M = { left: 46, right: 14, top: 26, bottom: 8 };
+    const PLOT_H = 460;
+    let plotW = 0;
+
+    function layout() {
+      const cssW = wrap.clientWidth;
+      const cssH = M.top + PLOT_H + M.bottom;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      canvas.style.height = cssH + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      plotW = Math.max(100, cssW - M.left - M.right);
+    }
+
+    function renderField() {
+      off.width = plotW;
+      off.height = PLOT_H;
+      const octx = off.getContext('2d');
+      const img = octx.createImageData(plotW, PLOT_H);
+      const px = img.data;
+
+      for (let y = 0; y < PLOT_H; y++) {
+        const d = Math.min(DAYS_IN_YEAR - 1, Math.floor(y * DAYS_IN_YEAR / PLOT_H));
+        const day = DAYS[d];
+        const offH = state.tz + (dstActive(state.dst, d) ? 1 : 0);
+        // true solar time = clock minutes + K
+        const K = day.eqtime + 4 * state.lng - 60 * offH;
+        let p = y * plotW * 4;
+        for (let x = 0; x < plotW; x++) {
+          const clock = (x + 0.5) / plotW * 1440;
+          const ha = rad((clock + K) / 4 - 180);
+          const sinAlt = clamp(day.sinsin + day.coscos * Math.cos(ha), -1, 1);
+          const alt = deg(Math.asin(sinAlt));
+          const i = Math.round((alt + 90) * 4) * 3;
+          px[p++] = ALT_LUT[i];
+          px[p++] = ALT_LUT[i + 1];
+          px[p++] = ALT_LUT[i + 2];
+          px[p++] = 255;
+        }
+      }
+      octx.putImageData(img, 0, 0);
+    }
+
+    function drawChart() {
+      const cssW = M.left + plotW + M.right;
+      ctx.clearRect(0, 0, cssW, M.top + PLOT_H + M.bottom);
+      ctx.drawImage(off, M.left, M.top);
+
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textBaseline = 'middle';
+
+      // hour gridlines + labels
+      for (let h = 0; h <= 24; h++) {
+        const x = M.left + h / 24 * plotW;
+        ctx.strokeStyle = h % 3 === 0 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)';
+        ctx.beginPath();
+        ctx.moveTo(x, M.top);
+        ctx.lineTo(x, M.top + PLOT_H);
+        ctx.stroke();
+        if (h % 3 === 0 && h < 24) {
+          ctx.fillStyle = '#9aa3b5';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(h).padStart(2, '0'), x, M.top - 12);
+        }
+      }
+
+      // month boundaries + labels
+      ctx.textAlign = 'right';
+      for (let m = 0; m < 12; m++) {
+        const start = doy(new Date(YEAR, m, 1));
+        const end = m === 11 ? DAYS_IN_YEAR : doy(new Date(YEAR, m + 1, 1));
+        const yTop = M.top + start / DAYS_IN_YEAR * PLOT_H;
+        const yMid = M.top + (start + end) / 2 / DAYS_IN_YEAR * PLOT_H;
+        if (m > 0) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+          ctx.beginPath();
+          ctx.moveTo(M.left, yTop);
+          ctx.lineTo(M.left + plotW, yTop);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#9aa3b5';
+        ctx.fillText(MONTHS[m], M.left - 8, yMid);
+      }
+
+      // today marker
+      const today = new Date();
+      if (today.getFullYear() === YEAR) {
+        const d = doy(new Date(YEAR, today.getMonth(), today.getDate()));
+        const y = M.top + (d + 0.5) / DAYS_IN_YEAR * PLOT_H;
+        ctx.strokeStyle = 'rgba(255,96,96,0.6)';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(M.left, y);
+        ctx.lineTo(M.left + plotW, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const nowMin = today.getHours() * 60 + today.getMinutes();
+        ctx.fillStyle = '#ff6060';
+        ctx.beginPath();
+        ctx.arc(M.left + nowMin / 1440 * plotW, y, 3.5, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // frame
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.strokeRect(M.left + 0.5, M.top + 0.5, plotW - 1, PLOT_H - 1);
+    }
+
+    /* ---------------- work block ---------------- */
+
+    const workBlock = document.getElementById('workBlock');
+    const workLabel = document.getElementById('workLabel');
+    const workOut = document.getElementById('workOut');
+
+    function updateWorkUI() {
+      workBlock.style.top = M.top + 'px';
+      workBlock.style.height = PLOT_H + 'px';
+      workBlock.style.left = (M.left + state.workStart / 1440 * plotW) + 'px';
+      workBlock.style.width = (state.workDur / 1440 * plotW) + 'px';
+      const txt = fmtMin(state.workStart) + '–' + fmtMin(state.workStart + state.workDur);
+      workLabel.textContent = txt;
+      workOut.textContent = txt;
+      workBlock.setAttribute('aria-valuetext', 'Work ' + txt);
+      document.getElementById('dur').value = state.workDur / 60;
+    }
+
+    function setWork(start, dur) {
+      dur = clamp(Math.round(dur / 15) * 15, 60, 960);
+      start = clamp(Math.round(start / 15) * 15, 0, 1440 - dur);
+      if (start === state.workStart && dur === state.workDur) return;
+      state.workStart = start;
+      state.workDur = dur;
+      updateWorkUI();
+      updateStats();
+      writeHash();
+    }
+
+    let drag = null;
+
+    workBlock.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const type = e.target.classList.contains('left') ? 'left'
+                 : e.target.classList.contains('right') ? 'right' : 'move';
+      drag = { type, x0: e.clientX, start0: state.workStart, dur0: state.workDur };
+      workBlock.setPointerCapture(e.pointerId);
+    });
+
+    workBlock.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dMin = (e.clientX - drag.x0) / plotW * 1440;
+      if (drag.type === 'move') {
+        setWork(drag.start0 + dMin, drag.dur0);
+      } else if (drag.type === 'left') {
+        const newStart = clamp(drag.start0 + dMin, 0, drag.start0 + drag.dur0 - 60);
+        setWork(newStart, drag.dur0 + (drag.start0 - newStart));
+      } else {
+        setWork(drag.start0, drag.dur0 + dMin);
+      }
+    });
+
+    workBlock.addEventListener('pointerup', () => { drag = null; });
+    workBlock.addEventListener('pointercancel', () => { drag = null; });
+
+    workBlock.addEventListener('keydown', e => {
+      const step = e.shiftKey ? 60 : 15;
+      if (e.key === 'ArrowLeft')       { setWork(state.workStart - step, state.workDur); e.preventDefault(); }
+      else if (e.key === 'ArrowRight') { setWork(state.workStart + step, state.workDur); e.preventDefault(); }
+    });
+
+    /* ---------------- stats & scoreboard ---------------- */
+
+    function inArc(t, start, len) {
+      return mod(t - start, 1440) < len;
+    }
+
+    // Overlap of two arcs on the 1440-minute circle.
+    function arcOverlap(a, la, b, lb) {
+      let total = 0;
+      for (const k of [-1440, 0, 1440]) {
+        total += Math.max(0, Math.min(a + la, b + lb + k) - Math.max(a, b + k));
+      }
+      return Math.min(total, Math.min(la, lb));
+    }
+
+    function computeStats(rule) {
+      let workMin = 0, litMin = 0, darkStarts = 0, darkEnds = 0, workDays = 0;
+      for (let d = 0; d < DAYS_IN_YEAR; d++) {
+        const day = DAYS[d];
+        if (state.weekdaysOnly && (day.dow === 0 || day.dow === 6)) continue;
+        workDays++;
+        workMin += state.workDur;
+
+        if (day.polar === 1) { litMin += state.workDur; continue; }
+        if (day.polar === -1) { darkStarts++; darkEnds++; continue; }
+
+        const offMin = (state.tz + (dstActive(rule, d) ? 1 : 0)) * 60;
+        const srL = mod(day.srUTC + offMin, 1440);
+        litMin += arcOverlap(state.workStart, state.workDur, srL, day.dayLen);
+        if (!inArc(state.workStart, srL, day.dayLen)) darkStarts++;
+        if (!inArc(mod(state.workStart + state.workDur, 1440), srL, day.dayLen)) darkEnds++;
+      }
+      return { workMin, litMin, darkStarts, darkEnds, workDays,
+               pct: workMin ? litMin / workMin * 100 : 0 };
+    }
+
+    function updateStats() {
+      const cur = computeStats(state.dst);
+      document.getElementById('stPct').textContent = cur.pct.toFixed(1) + '%';
+      document.getElementById('stPctSub').textContent =
+        Math.round(cur.litMin / 60) + ' of ' + Math.round(cur.workMin / 60) +
+        ' work hours, across ' + cur.workDays + ' days';
+      document.getElementById('stDarkStart').textContent = cur.darkStarts;
+      document.getElementById('stDarkEnd').textContent = cur.darkEnds;
+
+      let minD = null, maxD = null;
+      for (const day of DAYS) {
+        if (minD === null || day.dayLen < minD.dayLen) minD = day;
+        if (maxD === null || day.dayLen > maxD.dayLen) maxD = day;
+      }
+      document.getElementById('stRange').textContent =
+        fmtDur(minD.dayLen) + ' → ' + fmtDur(maxD.dayLen);
+      document.getElementById('stRangeSub').textContent =
+        minD.label + ' → ' + maxD.label;
+
+      // scoreboard
+      const rules = Object.keys(DST_POLICIES);
+      const rows = rules.map(r => ({ rule: r, s: computeStats(r) }));
+      const bestStarts = Math.min(...rows.map(r => r.s.darkStarts));
+      const bestEnds = Math.min(...rows.map(r => r.s.darkEnds));
+      const bestPct = Math.max(...rows.map(r => r.s.pct));
+
+      const body = document.getElementById('scoreBody');
+      body.innerHTML = '';
+      for (const { rule, s } of rows) {
+        const tr = document.createElement('tr');
+        if (rule === state.dst) tr.className = 'active';
+        tr.innerHTML =
+          '<td>' + DST_POLICIES[rule] + '</td>' +
+          '<td class="' + (s.darkStarts === bestStarts ? 'best' : '') + '">' + s.darkStarts + ' days</td>' +
+          '<td class="' + (s.darkEnds === bestEnds ? 'best' : '') + '">' + s.darkEnds + ' days</td>' +
+          '<td class="' + (Math.abs(s.pct - bestPct) < 0.05 ? 'best' : '') + '">' + s.pct.toFixed(1) + '%</td>';
+        tr.addEventListener('click', () => {
+          state.dst = rule;
+          document.getElementById('dst').value = rule;
+          update(true);
+        });
+        body.appendChild(tr);
+      }
+    }
+
+    /* ---------------- tooltip ---------------- */
+
+    const tooltip = document.getElementById('tooltip');
+
+    canvas.addEventListener('mousemove', e => {
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left - M.left;
+      const y = e.clientY - r.top - M.top;
+      if (x < 0 || x >= plotW || y < 0 || y >= PLOT_H) { tooltip.style.display = 'none'; return; }
+
+      const d = Math.min(DAYS_IN_YEAR - 1, Math.floor(y / PLOT_H * DAYS_IN_YEAR));
+      const day = DAYS[d];
+      const isDst = dstActive(state.dst, d);
+      const offMin = (state.tz + (isDst ? 1 : 0)) * 60;
+
+      let sun;
+      if (day.polar === 1)       sun = 'midnight sun — no sunset';
+      else if (day.polar === -1) sun = 'polar night — no sunrise';
+      else sun = '☀ ' + fmtMin(day.srUTC + offMin) + ' → ' + fmtMin(day.ssUTC + offMin)
+               + ' &nbsp;(' + fmtDur(day.dayLen) + ')';
+
+      tooltip.innerHTML =
+        '<span class="tt-date">' + day.label + '</span> · ' + fmtMin(x / plotW * 1440) + '<br>' +
+        sun + '<br>' +
+        '<span class="tt-dst">' + (isDst ? 'DST in effect (UTC' : 'standard time (UTC') +
+        (state.tz + (isDst ? 1 : 0) >= 0 ? '+' : '') + (state.tz + (isDst ? 1 : 0)) + ')</span>';
+
+      tooltip.style.display = 'block';
+      const wrapR = wrap.getBoundingClientRect();
+      let tx = e.clientX - wrapR.left + 16;
+      let ty = e.clientY - wrapR.top + 16;
+      if (tx + tooltip.offsetWidth > wrapR.width - 8) tx -= tooltip.offsetWidth + 28;
+      if (ty + tooltip.offsetHeight > wrapR.height - 8) ty -= tooltip.offsetHeight + 28;
+      tooltip.style.left = tx + 'px';
+      tooltip.style.top = ty + 'px';
+    });
+
+    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    /* ---------------- legend ---------------- */
+
+    (function buildLegend() {
+      const legend = document.getElementById('legend');
+      const items = [
+        ['Day', 30], ['Civil twilight', -3], ['Nautical', -9], ['Astronomical', -15], ['Night', -30]
+      ];
+      for (const [name, alt] of items.reverse()) {
+        const i = Math.round((alt + 90) * 4) * 3;
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.innerHTML = '<span class="swatch" style="background: rgb(' +
+          ALT_LUT[i] + ',' + ALT_LUT[i + 1] + ',' + ALT_LUT[i + 2] + ')"></span>' + name;
+        legend.insertBefore(chip, legend.firstChild);
+      }
+    })();
+
+    /* ---------------- controls ---------------- */
+
+    const els = {
+      preset: document.getElementById('preset'),
+      lat: document.getElementById('lat'),
+      lng: document.getElementById('lng'),
+      tz: document.getElementById('tz'),
+      dst: document.getElementById('dst'),
+      dur: document.getElementById('dur'),
+      weekdays: document.getElementById('weekdays')
+    };
+
+    (function buildPresets() {
+      const custom = document.createElement('option');
+      custom.value = 'custom';
+      custom.textContent = 'Custom…';
+      els.preset.appendChild(custom);
+      PRESETS.forEach((p, i) => {
+        const o = document.createElement('option');
+        o.value = i;
+        o.textContent = p.name;
+        els.preset.appendChild(o);
+      });
+    })();
+
+    function syncControls() {
+      els.lat.value = state.lat;
+      els.lng.value = state.lng;
+      els.tz.value = state.tz;
+      els.dst.value = state.dst;
+      els.dur.value = state.workDur / 60;
+      els.weekdays.checked = state.weekdaysOnly;
+      const i = PRESETS.findIndex(p =>
+        p.lat === state.lat && p.lng === state.lng && p.tz === state.tz && p.dst === state.dst);
+      els.preset.value = i >= 0 ? String(i) : 'custom';
+    }
+
+    els.preset.addEventListener('change', () => {
+      const p = PRESETS[+els.preset.value];
+      if (!p) return;
+      Object.assign(state, { lat: p.lat, lng: p.lng, tz: p.tz, dst: p.dst });
+      syncControls();
+      update(true);
+    });
+
+    for (const id of ['lat', 'lng', 'tz']) {
+      els[id].addEventListener('change', () => {
+        const v = parseFloat(els[id].value);
+        if (!isFinite(v)) return;
+        state[id] = id === 'lat' ? clamp(v, -89, 89)
+                  : id === 'lng' ? clamp(v, -180, 180)
+                  : clamp(v, -12, 14);
+        els[id].value = state[id];
+        els.preset.value = 'custom';
+        update(true);
       });
     }
 
-    async function fetchSunData(lat, lng, date) {
-      const url = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${date}&formatted=0`;
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (json.status !== 'OK') return null;
+    els.dst.addEventListener('change', () => {
+      state.dst = els.dst.value;
+      els.preset.value = 'custom';
+      update(true);
+    });
 
-      const sunrise = new Date(json.results.sunrise);
-      const sunset = new Date(json.results.sunset);
+    els.dur.addEventListener('change', () => {
+      const v = parseFloat(els.dur.value);
+      if (isFinite(v)) setWork(state.workStart, v * 60);
+    });
 
-      // Convert to local hour
-      const offset = (new Date()).getTimezoneOffset() / 60;
-      const localSunriseHour = (sunrise.getUTCHours() - offset + 24) % 24;
-      const localSunsetHour = (sunset.getUTCHours() - offset + 24) % 24;
+    els.weekdays.addEventListener('change', () => {
+      state.weekdaysOnly = els.weekdays.checked;
+      updateStats();
+      writeHash();
+    });
 
-      return {
-        sunrise,
-        sunset,
-        sunriseHourLocal: localSunriseHour,
-        sunsetHourLocal: localSunsetHour
+    document.getElementById('locateBtn').addEventListener('click', () => {
+      if (!navigator.geolocation) return alert('Geolocation is not available in this browser.');
+      navigator.geolocation.getCurrentPosition(pos => {
+        state.lat = +pos.coords.latitude.toFixed(2);
+        state.lng = +pos.coords.longitude.toFixed(2);
+        // standard (winter) offset of the browser zone
+        const jan = new Date(YEAR, 0, 1).getTimezoneOffset();
+        const jul = new Date(YEAR, 6, 1).getTimezoneOffset();
+        state.tz = -Math.max(jan, jul) / 60;
+        state.dst = jan === jul ? 'none'
+                  : jan > jul ? 'au'
+                  : state.lng < -30 ? 'us' : 'eu';
+        syncControls();
+        update(true);
+      }, () => alert('Could not get your location.'));
+    });
+
+    /* ---------------- URL state ---------------- */
+
+    function writeHash() {
+      const q = new URLSearchParams({
+        lat: state.lat, lng: state.lng, tz: state.tz, dst: state.dst,
+        start: state.workStart, dur: state.workDur, wd: state.weekdaysOnly ? 1 : 0
+      });
+      history.replaceState(null, '', '#' + q.toString());
+    }
+
+    function readHash() {
+      if (!location.hash) return;
+      const q = new URLSearchParams(location.hash.slice(1));
+      const num = (k, lo, hi) => {
+        const v = parseFloat(q.get(k));
+        return isFinite(v) ? clamp(v, lo, hi) : null;
       };
+      state.lat = num('lat', -89, 89) ?? state.lat;
+      state.lng = num('lng', -180, 180) ?? state.lng;
+      state.tz = num('tz', -12, 14) ?? state.tz;
+      if (DST_POLICIES[q.get('dst')]) state.dst = q.get('dst');
+      state.workDur = num('dur', 60, 960) ?? state.workDur;
+      state.workStart = num('start', 0, 1440 - state.workDur) ?? state.workStart;
+      if (q.has('wd')) state.weekdaysOnly = q.get('wd') !== '0';
     }
 
-    function updateDaylightOverlay(monthRow, srHour, ssHour) {
-      const nightOverlayEl = monthRow.querySelector('.night-overlay');
-      const srPercent = (srHour / 24) * 100;
-      const ssPercent = (ssHour / 24) * 100;
+    /* ---------------- main update ---------------- */
 
-      nightOverlayEl.style.background = `linear-gradient(to right,
-        rgba(0,0,0,0.4) 0%,
-        rgba(0,0,0,0.4) ${srPercent}%,
-        rgba(0,0,0,0) ${srPercent}%,
-        rgba(0,0,0,0) ${ssPercent}%,
-        rgba(0,0,0,0.4) ${ssPercent}%,
-        rgba(0,0,0,0.4) 100%
-      )`;
+    function update(full) {
+      if (full) DAYS = buildDays();
+      layout();
+      renderField();
+      drawChart();
+      updateWorkUI();
+      updateStats();
+      writeHash();
     }
 
-    // Initial fetch
-    fetchAllMonths(latInput.value, lngInput.value);
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => update(false), 120);
+    });
+
+    readHash();
+    syncControls();
+    update(true);
   </script>
 
 </body>
 </html>
-
